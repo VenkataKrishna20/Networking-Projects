@@ -1,102 +1,82 @@
-import tkinter as tk
-from tkinter import ttk
+import streamlit as st
 
-# ------------------------------
-# Firewall Simulator Core
-# ------------------------------
-class FirewallSimulator:
-    def __init__(self, ui):
-        self.ui = ui
-        # Predefined rules: list of dicts
-        # Top-down priority: first match applies
-        self.rules = [
-            {"action": "ALLOW", "protocol": "TCP", "port": 22},   # Allow SSH
-            {"action": "BLOCK", "protocol": "TCP", "port": 80},   # Block HTTP
-            {"action": "ALLOW", "protocol": "TCP", "port": 443},  # Allow HTTPS
-            {"action": "BLOCK", "protocol": "UDP", "port": 53},   # Block DNS over UDP
-        ]
+# -----------------------------------------------------------------------------
+# Streamlit Page Setup
+# -----------------------------------------------------------------------------
+st.set_page_config(
+    page_title="Firewall Simulator - Educational",
+    page_icon="🔥",
+    layout="centered"
+)
 
-    def send_packet(self, src_ip, dst_ip, protocol, port):
-        packet = f"Packet[{src_ip} -> {dst_ip}, {protocol}:{port}]"
-        self.ui.log(f"[CLIENT] Sending: {packet}")
+st.title("Firewall Simulator - Educational")
 
-        # Evaluate packet against rules
-        for idx, rule in enumerate(self.rules, 1):
-            if rule["protocol"] == protocol and rule["port"] == port:
-                action = rule["action"]
-                self.ui.log(f"[FIREWALL] Rule #{idx} matched: {action} ({protocol}:{port})")
-                self.ui.log(f"[RESULT] {action}ED {packet}\n")
-                return
+# -----------------------------------------------------------------------------
+# Stateful Session Initialization
+# -----------------------------------------------------------------------------
+if "event_logs" not in st.session_state:
+    st.session_state.event_logs = []
 
-        # Default policy
-        self.ui.log(f"[FIREWALL] No matching rule. DEFAULT ALLOW {packet}\n")
+# Predefined rules: top-down priority matching your original script
+DEFAULT_RULES = [
+    {"action": "ALLOW", "protocol": "TCP", "port": 22},   # Allow SSH
+    {"action": "BLOCK", "protocol": "TCP", "port": 80},   # Block HTTP
+    {"action": "ALLOW", "protocol": "TCP", "port": 443},  # Allow HTTPS
+    {"action": "BLOCK", "protocol": "UDP", "port": 53},   # Block DNS over UDP
+]
 
-# ------------------------------
-# UI Class
-# ------------------------------
-class Firewall_UI:
-    def __init__(self, root):
-        self.root = root
-        root.title("Firewall Simulator - Educational")
+def append_log(text):
+    """Appends messages to the session event log."""
+    st.session_state.event_logs.append(text)
 
-        self.frame = ttk.Frame(root, padding=10)
-        self.frame.grid()
+def send_packet(src_ip, dst_ip, protocol, port):
+    """Core evaluation matching original FirewallSimulator logic."""
+    packet = f"Packet[{src_ip} -> {dst_ip}, {protocol}:{port}]"
+    append_log(f"[CLIENT] Sending: {packet}")
 
-        # Source IP
-        ttk.Label(self.frame, text="Source IP:").grid(row=0, column=0, sticky="w")
-        self.src_entry = ttk.Entry(self.frame, width=15)
-        self.src_entry.grid(row=0, column=1)
-        self.src_entry.insert(0, "192.168.1.5")
-
-        # Destination IP
-        ttk.Label(self.frame, text="Destination IP:").grid(row=0, column=2, sticky="w")
-        self.dst_entry = ttk.Entry(self.frame, width=15)
-        self.dst_entry.grid(row=0, column=3)
-        self.dst_entry.insert(0, "203.0.113.10")
-
-        # Protocol
-        ttk.Label(self.frame, text="Protocol:").grid(row=1, column=0, sticky="w")
-        self.proto_entry = ttk.Entry(self.frame, width=10)
-        self.proto_entry.grid(row=1, column=1)
-        self.proto_entry.insert(0, "TCP")
-
-        # Port
-        ttk.Label(self.frame, text="Port:").grid(row=1, column=2, sticky="w")
-        self.port_entry = ttk.Entry(self.frame, width=10)
-        self.port_entry.grid(row=1, column=3)
-        self.port_entry.insert(0, "80")
-
-        # Send Button
-        self.send_btn = ttk.Button(self.frame, text="Send Packet", command=self.send_packet)
-        self.send_btn.grid(row=2, column=0, columnspan=4, pady=5)
-
-        # Log Box
-        ttk.Label(self.frame, text="Event Log:").grid(row=3, column=0, sticky="nw")
-        self.log_box = tk.Text(self.frame, width=80, height=20)
-        self.log_box.grid(row=4, column=0, columnspan=4)
-
-        self.sim = FirewallSimulator(self)
-
-    def send_packet(self):
-        src_ip = self.src_entry.get()
-        dst_ip = self.dst_entry.get()
-        protocol = self.proto_entry.get().upper()
-        try:
-            port = int(self.port_entry.get())
-        except ValueError:
-            self.log("[ERROR] Invalid port")
+    # Evaluate packet against rules
+    for idx, rule in enumerate(DEFAULT_RULES, 1):
+        if rule["protocol"] == protocol and rule["port"] == port:
+            action = rule["action"]
+            append_log(f"[FIREWALL] Rule #{idx} matched: {action} ({protocol}:{port})")
+            append_log(f"[RESULT] {action}ED {packet}\n")
             return
-        self.sim.send_packet(src_ip, dst_ip, protocol, port)
 
-    # Logging
-    def log(self, text):
-        self.log_box.insert(tk.END, text + "\n")
-        self.log_box.see(tk.END)
+    # Default policy
+    append_log(f"[FIREWALL] No matching rule. DEFAULT ALLOW {packet}\n")
 
-# ------------------------------
-# Start App
-# ------------------------------
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = Firewall_UI(root)
-    root.mainloop()
+# -----------------------------------------------------------------------------
+# Web UI Input Form (Replaces Tkinter Entries and Grid)
+# -----------------------------------------------------------------------------
+with st.form("firewall_form"):
+    col1, col2 = st.columns(2)
+
+    with col1:
+        src_ip = st.text_input("Source IP:", value="192.168.1.5")
+        protocol = st.text_input("Protocol:", value="TCP").strip().upper()
+
+    with col2:
+        dst_ip = st.text_input("Destination IP:", value="203.0.113.10")
+        port_raw = st.text_input("Port:", value="80")
+
+    submitted = st.form_submit_button("Send Packet", use_container_width=True)
+
+if submitted:
+    try:
+        port = int(port_raw)
+        send_packet(src_ip, dst_ip, protocol, port)
+    except ValueError:
+        append_log("[ERROR] Invalid port\n")
+
+# -----------------------------------------------------------------------------
+# Event Log Display (Replaces tk.Text Log Box)
+# -----------------------------------------------------------------------------
+st.markdown("### Event Log:")
+
+# Format logs into a scrollable, terminal-style box
+formatted_logs = "\n".join(st.session_state.event_logs)
+st.code(formatted_logs if formatted_logs else "No events logged yet.", language="text")
+
+if st.button("Clear Log"):
+    st.session_state.event_logs = []
+    st.rerun()
